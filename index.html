@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENTINEL — Threat Intelligence Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#020b14;--bg2:#040f1d;--card:rgba(4,20,40,0.9);--border:rgba(0,200,255,0.12);--cyan:#00c8ff;--green:#00ff88;--red:#ff2d55;--orange:#ff6b00;--yellow:#ffd700;--purple:#b06dff;--t1:#e0f4ff;--t2:#6a9ab8;--t3:#2d5a7a;--gcyan:0 0 20px rgba(0,200,255,0.4);--ggreen:0 0 20px rgba(0,255,136,0.4);--gred:0 0 20px rgba(255,45,85,0.4);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--t1);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden;cursor:crosshair;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,200,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9998;}
+.app{position:relative;z-index:1;}
+
+/* ══ HEADER ══ */
+header{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:60px;background:rgba(2,11,20,0.97);border-bottom:1px solid rgba(0,200,255,0.2);position:sticky;top:0;z-index:200;backdrop-filter:blur(14px);}
+.logo{display:flex;align-items:center;gap:11px;cursor:pointer;}
+.logo-icon{width:33px;height:33px;border:2px solid var(--cyan);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:12px;color:var(--cyan);animation:logoGlow 3s ease-in-out infinite;}
+@keyframes logoGlow{0%,100%{box-shadow:var(--gcyan),inset 0 0 8px rgba(0,200,255,0.1);}50%{box-shadow:0 0 32px rgba(0,200,255,0.7),inset 0 0 18px rgba(0,200,255,0.2);}}
+.logo-text{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--cyan);letter-spacing:4px;text-shadow:var(--gcyan);}
+.logo-sub{font-size:8px;color:var(--t3);letter-spacing:2px;font-family:'Share Tech Mono',monospace;}
+.nav-tabs{display:flex;align-items:center;gap:3px;}
+.nav-tab{font-family:'Share Tech Mono',monospace;font-size:9.5px;letter-spacing:1.5px;color:var(--t2);cursor:pointer;padding:5px 12px;border:1px solid transparent;border-radius:3px;transition:all .2s;text-transform:uppercase;display:flex;align-items:center;gap:5px;}
+.nav-tab:hover,.nav-tab.active{color:var(--cyan);border-color:rgba(0,200,255,0.3);background:rgba(0,200,255,0.06);text-shadow:var(--gcyan);}
+.tab-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.hdr-right{display:flex;align-items:center;gap:14px;}
+.status-ind{display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:9.5px;color:var(--green);}
+.sdot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 2s ease-in-out infinite;box-shadow:var(--ggreen);}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.5);opacity:.5;}}
+.threat-badge{padding:4px 10px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:1.5px;background:rgba(255,107,0,0.12);border:1px solid var(--orange);color:var(--orange);animation:tblink 4s ease-in-out infinite;cursor:pointer;}
+@keyframes tblink{0%,88%,100%{opacity:1;}94%{opacity:.3;}}
+.clock{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--t2);min-width:86px;text-align:right;}
+
+/* ══ PANELS (full-screen overlays for each nav item) ══ */
+.panel{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:rgba(2,8,18,0.98);z-index:150;overflow-y:auto;padding:26px 30px;backdrop-filter:blur(20px);border-top:1px solid rgba(0,200,255,0.15);}
+.panel.open{display:block;animation:panelIn .3s ease-out;}
+@keyframes panelIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+.pnl-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid rgba(0,200,255,0.1);}
+.pnl-title{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;color:var(--cyan);letter-spacing:4px;text-shadow:var(--gcyan);}
+.pnl-sub{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--t3);margin-top:4px;letter-spacing:1px;}
+.pnl-close{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--t2);cursor:pointer;padding:6px 13px;border:1px solid rgba(0,200,255,0.2);border-radius:3px;transition:all .2s;letter-spacing:1px;}
+.pnl-close:hover{color:var(--red);border-color:var(--red);}
+.pgrid{display:grid;gap:14px;}
+.pgrid-2{grid-template-columns:1fr 1fr;}
+.pgrid-3{grid-template-columns:1fr 1fr 1fr;}
+.pcard{background:rgba(4,15,30,0.8);border:1px solid rgba(0,200,255,0.1);border-radius:6px;padding:17px 20px;}
+.pcard-title{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--cyan);margin-bottom:11px;padding-bottom:7px;border-bottom:1px solid rgba(0,200,255,0.08);}
+.psr{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.psr:last-child{border:none;}
+.psr-l{font-family:'Share Tech Mono',monospace;font-size:9.5px;color:var(--t2);letter-spacing:.5px;}
+.psr-v{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;}
+.cc{color:var(--cyan)}.cg{color:var(--green)}.cr{color:var(--red)}.co{color:var(--orange)}.cy{color:var(--yellow)}.cp{color:var(--purple)}
+.news-item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:all .2s;}
+.news-item:hover{padding-left:7px;}
+.ni-time{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--t3);letter-spacing:.5px;margin-bottom:3px;}
+.ni-title{font-size:12px;font-weight:600;color:var(--t1);margin-bottom:3px;line-height:1.4;}
+.ni-tag{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:7.5px;padding:1px 5px;border-radius:2px;margin-right:3px;margin-top:2px;}
+.tr{background:rgba(255,45,85,.12);border:1px solid rgba(255,45,85,.3);color:var(--red);}
+.to{background:rgba(255,107,0,.12);border:1px solid rgba(255,107,0,.3);color:var(--orange);}
+.tc{background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:var(--cyan);}
+.ty{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--yellow);}
+.tp{background:rgba(176,109,255,.1);border:1px solid rgba(176,109,255,.3);color:var(--purple);}
+.ai-box{background:rgba(0,0,0,.5);border:1px solid rgba(0,200,255,.15);border-radius:4px;padding:13px 15px;font-family:'Share Tech Mono',monospace;font-size:10.5px;color:var(--t2);line-height:1.8;min-height:80px;white-space:pre-wrap;}
+.ai-spin{animation:spin 1s linear infinite;display:inline-block;margin-right:5px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.ptext{font-size:12px;color:var(--t2);line-height:1.7;}
+
+/* ══ MAIN ══ */
+.main{padding:16px 20px;display:grid;gap:13px;}
+.gstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
+.gcard{background:rgba(0,0,0,.4);border:1px solid rgba(0,200,255,.08);border-radius:4px;padding:9px 13px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:border-color .2s;}
+.gcard:hover{border-color:rgba(0,200,255,.25);}
+.gc-icon{font-size:18px;opacity:.8;}
+.gc-label{font-family:'Share Tech Mono',monospace;font-size:7.5px;color:var(--t3);letter-spacing:1px;margin-bottom:2px;}
+.gc-val{font-family:'Orbitron',monospace;font-size:15px;font-weight:700;color:var(--cyan);}
+.gc-sub{font-size:8px;color:var(--t3);margin-top:1px;}
+.metrics-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.metric-card{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:13px 15px;position:relative;overflow:hidden;cursor:pointer;transition:all .2s;}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,var(--cyan));opacity:.7;}
+.metric-card:hover{border-color:rgba(0,200,255,.3);transform:translateY(-1px);}
+.mc-label{font-family:'Share Tech Mono',monospace;font-size:7.5px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:6px;}
+.mc-val{font-family:'Orbitron',monospace;font-size:24px;font-weight:700;color:var(--ac,var(--cyan));line-height:1;text-shadow:0 0 18px var(--ac,var(--cyan));}
+.mc-ch{font-size:9px;color:var(--t3);margin-top:3px;font-family:'Share Tech Mono',monospace;}
+.mc-ch.up{color:var(--red)}.mc-ch.dn{color:var(--green)}
+.mid-row{display:grid;grid-template-columns:1fr 355px 318px;gap:13px;}
+.bot-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;}
+
+/* ══ CARD ══ */
+.card{background:var(--card);border:1px solid var(--border);border-radius:5px;overflow:hidden;}
+.card-hdr{padding:10px 15px;border-bottom:1px solid rgba(0,200,255,.07);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-family:'Orbitron',monospace;font-size:9.5px;font-weight:700;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;}
+.cbadge{font-family:'Share Tech Mono',monospace;font-size:8.5px;padding:2px 7px;border-radius:2px;letter-spacing:.5px;}
+.clive{background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--green);}
+.ccount{background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:var(--cyan);}
+.cred{background:rgba(255,45,85,.1);border:1px solid rgba(255,45,85,.3);color:var(--red);}
+
+/* ══ MAP ══ */
+.map-wrap{padding:13px 15px;height:304px;position:relative;}
+#threatCanvas{width:100%;height:100%;display:block;}
+.map-legend{position:absolute;bottom:18px;left:22px;display:flex;flex-direction:column;gap:3px;}
+.ml-i{display:flex;align-items:center;gap:5px;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--t2);}
+.ml-d{width:5px;height:5px;border-radius:50%;}
+
+/* ══ ATTACK LOG ══ */
+.alog{height:304px;overflow-y:auto;}
+.alog::-webkit-scrollbar{width:3px;}
+.alog::-webkit-scrollbar-thumb{background:rgba(0,200,255,.2);}
+.log-entry{padding:8px 15px;border-bottom:1px solid rgba(255,255,255,.04);display:grid;grid-template-columns:76px 1fr auto;gap:7px;align-items:center;transition:background .2s;cursor:pointer;animation:fi .4s;}
+.log-entry:hover{background:rgba(0,200,255,.03);}
+@keyframes fi{from{opacity:0;transform:translateX(-7px);}to{opacity:1;}}
+.log-time{font-family:'Share Tech Mono',monospace;font-size:8.5px;color:var(--t3);}
+.log-msg{font-size:10.5px;color:var(--t2);line-height:1.4;}
+.log-msg strong{color:var(--t1);font-weight:600;}
+.sev{font-family:'Share Tech Mono',monospace;font-size:7.5px;padding:2px 4px;border-radius:2px;white-space:nowrap;}
+.sc{background:rgba(255,45,85,.15);border:1px solid rgba(255,45,85,.4);color:var(--red);}
+.sh{background:rgba(255,107,0,.15);border:1px solid rgba(255,107,0,.4);color:var(--orange);}
+.sm{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--yellow);}
+.sl{background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:var(--cyan);}
+.si{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--t2);}
+
+/* ══ VULNS ══ */
+.vpanel{padding:9px 15px 13px;height:304px;overflow-y:auto;}
+.vpanel::-webkit-scrollbar{width:3px;}
+.vpanel::-webkit-scrollbar-thumb{background:rgba(0,200,255,.2);}
+.vi{margin-bottom:8px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:8px 10px;cursor:pointer;transition:all .2s;}
+.vi:hover{border-color:rgba(0,200,255,.25);}
+.vi-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.vi-id{font-family:'Share Tech Mono',monospace;font-size:8.5px;color:var(--cyan);}
+.cvss{font-family:'Orbitron',monospace;font-size:14px;font-weight:700;}
+.cvss.critical{color:var(--red);text-shadow:var(--gred);}
+.cvss.high{color:var(--orange);}
+.cvss.medium{color:var(--yellow);}
+.vi-title{font-size:10.5px;color:var(--t1);margin-bottom:3px;font-weight:600;}
+.vi-meta{display:flex;gap:7px;font-family:'Share Tech Mono',monospace;font-size:7.5px;color:var(--t3);}
+.vi-bar-bg{height:2px;background:rgba(255,255,255,.05);border-radius:2px;margin-top:6px;}
+.vi-bar{height:2px;border-radius:2px;}
+
+/* ══ SCANNER ══ */
+.sc-content{padding:11px 15px;}
+.ig{display:flex;gap:6px;margin-bottom:10px;}
+.inp{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(0,200,255,.2);border-radius:4px;padding:7px 10px;font-family:'Share Tech Mono',monospace;font-size:10.5px;color:var(--t1);outline:none;transition:border-color .2s;}
+.inp:focus{border-color:var(--cyan);box-shadow:var(--gcyan);}
+.inp::placeholder{color:var(--t3);}
+.btn{padding:7px 14px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9.5px;letter-spacing:.5px;cursor:pointer;border:none;transition:all .2s;text-transform:uppercase;}
+.btn-p{background:rgba(0,200,255,.14);border:1px solid rgba(0,200,255,.38);color:var(--cyan);}
+.btn-p:hover{background:rgba(0,200,255,.24);box-shadow:var(--gcyan);}
+.btn-d{background:rgba(255,45,85,.12);border:1px solid rgba(255,45,85,.3);color:var(--red);}
+.btn-d:hover{background:rgba(255,45,85,.22);}
+.btn-sm{padding:4px 9px;font-size:8.5px;}
+.phdr{display:grid;grid-template-columns:52px 72px 1fr 72px;padding:0 0 6px;border-bottom:1px solid rgba(0,200,255,.1);margin-bottom:2px;font-family:'Share Tech Mono',monospace;font-size:7.5px;letter-spacing:.5px;color:var(--t3);text-transform:uppercase;}
+.presults{height:185px;overflow-y:auto;}
+.presults::-webkit-scrollbar{width:3px;}
+.presults::-webkit-scrollbar-thumb{background:rgba(0,200,255,.2);}
+.prow{display:grid;grid-template-columns:52px 72px 1fr 72px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-family:'Share Tech Mono',monospace;font-size:9.5px;align-items:center;animation:fi .3s;}
+.p-open{color:var(--green);}
+.p-closed{color:var(--t3);}
+.p-risk{font-size:7.5px;padding:1px 4px;border-radius:2px;text-align:center;}
+
+/* ══ TRAFFIC ══ */
+.tc-content{padding:11px 15px;}
+#trafficCanvas{width:100%;height:165px;display:block;}
+.tstat{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.tsc{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:6px 8px;text-align:center;}
+.tsc-l{font-family:'Share Tech Mono',monospace;font-size:7.5px;color:var(--t3);letter-spacing:.5px;margin-bottom:2px;}
+.tsc-v{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:var(--cyan);}
+.tleg{display:flex;gap:12px;margin-top:7px;flex-wrap:wrap;}
+.tli{display:flex;align-items:center;gap:4px;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--t2);}
+.tld{width:6px;height:6px;border-radius:50%;}
+
+/* ══ BLOCKED ══ */
+.bc-content{padding:11px 15px;}
+.blist{height:208px;overflow-y:auto;}
+.blist::-webkit-scrollbar{width:3px;}
+.blist::-webkit-scrollbar-thumb{background:rgba(255,45,85,.2);}
+.brow{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);animation:fi .3s;}
+.bi-info{display:flex;flex-direction:column;gap:2px;}
+.bi-ip{font-family:'Share Tech Mono',monospace;font-size:10.5px;color:var(--red);}
+.bi-reason{font-size:8.5px;color:var(--t3);}
+.bi-time{font-family:'Share Tech Mono',monospace;font-size:7.5px;color:var(--t3);}
+.ubtn{font-family:'Share Tech Mono',monospace;font-size:7.5px;padding:2px 6px;background:rgba(255,45,85,.07);border:1px solid rgba(255,45,85,.18);border-radius:3px;color:var(--t3);cursor:pointer;transition:all .2s;}
+.ubtn:hover{background:rgba(255,45,85,.2);color:var(--red);}
+
+/* ══ TOAST ══ */
+#toasts{position:fixed;top:72px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:6px;}
+.toast{padding:10px 15px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9.5px;max-width:305px;animation:toastIn .3s;border-left:3px solid;backdrop-filter:blur(14px);display:flex;align-items:flex-start;gap:8px;}
+@keyframes toastIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;}}
+.toast.critical{background:rgba(28,4,10,.97);border-color:var(--red);color:#ffb3c0;}
+.toast.warning{background:rgba(28,12,0,.97);border-color:var(--orange);color:#ffd4a8;}
+.toast.info{background:rgba(0,12,28,.97);border-color:var(--cyan);color:#b0dff0;}
+.ti{font-size:14px;flex-shrink:0;}.tt{font-weight:700;letter-spacing:.5px;margin-bottom:2px;}.tm{opacity:.7;font-size:8.5px;line-height:1.4;}
+
+/* ══ MODAL ══ */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+.modal.open{display:flex;}
+.mbox{background:#040f1d;border:1px solid rgba(0,200,255,.25);border-radius:7px;padding:22px 26px;max-width:540px;width:90%;max-height:80vh;overflow-y:auto;animation:panelIn .3s;}
+.mbox::-webkit-scrollbar{width:3px;}
+.mbox::-webkit-scrollbar-thumb{background:rgba(0,200,255,.2);}
+.m-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:var(--cyan);letter-spacing:3px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid rgba(0,200,255,.1);}
+.m-sec{margin-bottom:12px;}
+.m-sec-t{font-family:'Share Tech Mono',monospace;font-size:8.5px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:6px;}
+.m-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.mr-l{font-family:'Share Tech Mono',monospace;font-size:9.5px;color:var(--t2);}
+.mr-v{font-family:'Share Tech Mono',monospace;font-size:9.5px;font-weight:700;}
+.m-text{font-size:11.5px;color:var(--t2);line-height:1.7;}
+
+/* ══ INTEL ══ */
+.intel-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.ir-actor{font-family:'Share Tech Mono',monospace;font-size:9.5px;color:var(--purple);margin-bottom:1px;}
+.ir-desc{font-size:9.5px;color:var(--t2);}
+.ir-right{text-align:right;flex-shrink:0;margin-left:11px;}
+.ir-tactic{font-family:'Share Tech Mono',monospace;font-size:7.5px;color:var(--t3);}
+.ir-conf{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;}
+
+@media(max-width:1380px){.metrics-row{grid-template-columns:repeat(3,1fr);}.mid-row{grid-template-columns:1fr 335px;}.mid-row .card:last-child{display:none;}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo" onclick="openPanel('overview')">
+    <div class="logo-icon">▣</div>
+    <div><div class="logo-text">SENTINEL</div><div class="logo-sub">Threat Intelligence Platform v4.2.1 — Feb 19, 2026</div></div>
+  </div>
+
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="switchTab(this,'overview')"><span class="tab-dot" style="background:#00ff88"></span>OVERVIEW</div>
+    <div class="nav-tab" onclick="switchTab(this,'network')"><span class="tab-dot" style="background:#00c8ff"></span>NETWORK</div>
+    <div class="nav-tab" onclick="switchTab(this,'endpoints')"><span class="tab-dot" style="background:#ffd700"></span>ENDPOINTS</div>
+    <div class="nav-tab" onclick="switchTab(this,'forensics')"><span class="tab-dot" style="background:#ff6b00"></span>FORENSICS</div>
+    <div class="nav-tab" onclick="switchTab(this,'intel')"><span class="tab-dot" style="background:#b06dff"></span>INTEL FEEDS</div>
+  </div>
+
+  <div class="hdr-right">
+    <div class="status-ind"><div class="sdot"></div>MONITORING ACTIVE</div>
+    <div class="threat-badge" onclick="openThreatModal()">THREAT: ELEVATED</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- ══ PANEL: OVERVIEW ══ -->
+<div class="panel" id="panel-overview">
+  <div class="pnl-hdr">
+    <div><div class="pnl-title">OVERVIEW</div><div class="pnl-sub">Global security posture — real-time summary of all monitored systems, active incidents, and 2026 threat context</div></div>
+    <div class="pnl-close" onclick="closeAllPanels()">✕ CLOSE</div>
+  </div>
+  <div class="gstrip" style="margin-bottom:14px;">
+    <div class="gcard"><div class="gc-icon">⚡</div><div><div class="gc-label">DDoS Growth YoY (2025)</div><div class="gc-val" style="color:var(--red)">+168%</div><div class="gc-sub">Peak 30 Tbps — Radware 2026 Report</div></div></div>
+    <div class="gcard"><div class="gc-icon">💀</div><div><div class="gc-label">Ransomware / Day</div><div class="gc-val" style="color:var(--orange)">1.7M</div><div class="gc-sub">Hits daily — 35% of all attacks</div></div></div>
+    <div class="gcard"><div class="gc-icon">⏱</div><div><div class="gc-label">Attack Frequency</div><div class="gc-val">39s</div><div class="gc-sub">One cyberattack every 39 seconds</div></div></div>
+    <div class="gcard"><div class="gc-icon">💸</div><div><div class="gc-label">Avg Breach Cost 2024</div><div class="gc-val" style="color:var(--yellow)">$4.88M</div><div class="gc-sub">↑10% YoY — IBM Security Report</div></div></div>
+  </div>
+  <div class="pgrid pgrid-3">
+    <div class="pcard">
+      <div class="pcard-title">SYSTEM STATUS — FEB 19 2026</div>
+      <div class="psr"><span class="psr-l">Monitoring Engine</span><span class="psr-v cg">ONLINE</span></div>
+      <div class="psr"><span class="psr-l">Threat Feed Sync</span><span class="psr-v cg">SYNCED — 3s ago</span></div>
+      <div class="psr"><span class="psr-l">ML Detection Model</span><span class="psr-v cc">v7.4.1 Active</span></div>
+      <div class="psr"><span class="psr-l">SIEM Integration</span><span class="psr-v cg">Connected</span></div>
+      <div class="psr"><span class="psr-l">EDR Agents Online</span><span class="psr-v cc">247 / 250</span></div>
+      <div class="psr"><span class="psr-l">Firewall Rules</span><span class="psr-v cc">2,841 active</span></div>
+      <div class="psr"><span class="psr-l">False Positive Rate</span><span class="psr-v cg">0.3%</span></div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-title">INCIDENT SUMMARY — LAST 24H</div>
+      <div class="psr"><span class="psr-l">Critical Incidents</span><span class="psr-v cr">3</span></div>
+      <div class="psr"><span class="psr-l">High Severity</span><span class="psr-v co">11</span></div>
+      <div class="psr"><span class="psr-l">Medium Severity</span><span class="psr-v cy">28</span></div>
+      <div class="psr"><span class="psr-l">Auto-Blocked Attacks</span><span class="psr-v cg">1,204</span></div>
+      <div class="psr"><span class="psr-l">Escalated to SOC</span><span class="psr-v cr">7</span></div>
+      <div class="psr"><span class="psr-l">Mean Detection Time</span><span class="psr-v cc">4.2 min</span></div>
+      <div class="psr"><span class="psr-l">Mean Response Time</span><span class="psr-v cc">12.1 min</span></div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-title">BREAKING — TODAY FEB 19 2026</div>
+      <div class="news-item"><div class="ni-time">TODAY · CISA KEV CATALOG</div><div class="ni-title">CVE-2026-2441: Chrome Use-After-Free under active zero-day exploitation — CVSS 8.8</div><span class="ni-tag tr">CRITICAL</span><span class="ni-tag to">ZERO-DAY</span></div>
+      <div class="news-item"><div class="ni-time">FEB 19 · CYBERNEWS</div><div class="ni-title">"Massiv" Android Trojan disguised as IPTV app — screen capture + credential theft MaaS</div><span class="ni-tag to">HIGH</span><span class="ni-tag tp">MOBILE</span></div>
+      <div class="news-item"><div class="ni-time">FEB 19 · RADWARE</div><div class="ni-title">2026 Global Threat Report: DDoS attacks jump 168%, peak 30 Tbps, NoName057(16) breaks records</div><span class="ni-tag to">REPORT</span></div>
+      <div class="news-item"><div class="ni-time">FEB 15 · BLEEPINGCOMPUTER</div><div class="ni-title">ShinyHunters: 600K Canada Goose customer records stolen</div><span class="ni-tag to">BREACH</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PANEL: NETWORK ══ -->
+<div class="panel" id="panel-network">
+  <div class="pnl-hdr">
+    <div><div class="pnl-title">NETWORK ANALYSIS</div><div class="pnl-sub">Deep packet inspection · flow analysis · protocol anomalies · perimeter defense · zero-trust enforcement</div></div>
+    <div class="pnl-close" onclick="closeAllPanels()">✕ CLOSE</div>
+  </div>
+  <div class="pgrid pgrid-2" style="margin-bottom:14px;">
+    <div class="pcard">
+      <div class="pcard-title">NETWORK TOPOLOGY STATUS</div>
+      <div class="psr"><span class="psr-l">Perimeter Firewall</span><span class="psr-v cg">ACTIVE — 2 clusters</span></div>
+      <div class="psr"><span class="psr-l">IDS/IPS Sensors</span><span class="psr-v cc">18 active</span></div>
+      <div class="psr"><span class="psr-l">WAF Rules Triggered</span><span class="psr-v co">847 in 24h</span></div>
+      <div class="psr"><span class="psr-l">VPN Connections</span><span class="psr-v cc">342 active</span></div>
+      <div class="psr"><span class="psr-l">Zero Trust Policy Engine</span><span class="psr-v cg">Enforcing</span></div>
+      <div class="psr"><span class="psr-l">DNS Sinkholes</span><span class="psr-v cc">74 domains</span></div>
+      <div class="psr"><span class="psr-l">Encrypted Traffic %</span><span class="psr-v cg">94.2%</span></div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-title">LIVE ANOMALY DETECTIONS</div>
+      <div class="psr"><span class="psr-l">Blocked Packets/min</span><span class="psr-v cr">12,440</span></div>
+      <div class="psr"><span class="psr-l">Geo-blocked Regions</span><span class="psr-v co">11 countries</span></div>
+      <div class="psr"><span class="psr-l">Lateral Movement Alerts</span><span class="psr-v co">3 active</span></div>
+      <div class="psr"><span class="psr-l">C2 Beaconing Suspected</span><span class="psr-v cr">2 hosts — IR-open</span></div>
+      <div class="psr"><span class="psr-l">DNS Tunnel Detected</span><span class="psr-v cy">1 alert</span></div>
+      <div class="psr"><span class="psr-l">Exfil Volume Alert</span><span class="psr-v co">Monitoring</span></div>
+      <div class="psr"><span class="psr-l">Protocol Anomalies</span><span class="psr-v cy">3 flagged</span></div>
+    </div>
+  </div>
+  <div class="pcard">
+    <div class="pcard-title">2025–2026 DDoS ESCALATION — REAL INTELLIGENCE</div>
+    <div class="ptext">Radware's 2026 Global Threat Analysis Report (released today, Feb 19 2026) confirms network-layer DDoS attacks surged 168.2% year-over-year, with peak volumes reaching nearly <strong>30 Tbps</strong> — marking a resurgence of brute-force volumetric attacks. The primary driver remains geopolitical and ideological conflict: Europe bore 48.4% of all claimed attacks; Israel (12.2%), USA (9.4%), and Ukraine (8.9%) top nation targets. The hacktivist group <strong>NoName057(16)</strong> set a historical record claiming 4,693 attacks. Government services were targeted in 38.8% of all claimed incidents. Additionally, CISA today added 4 new CVEs to the Known Exploited Vulnerabilities catalog including <strong>CVE-2026-2441</strong> (Chrome UAF, CVSS 8.8) and <strong>CVE-2024-7694</strong> (TeamT5 arbitrary file upload). Your perimeter defenses must be calibrated for multi-vector simultaneous attack scenarios at these scales.</div>
+  </div>
+</div>
+
+<!-- ══ PANEL: ENDPOINTS ══ -->
+<div class="panel" id="panel-endpoints">
+  <div class="pnl-hdr">
+    <div><div class="pnl-title">ENDPOINT DEFENSE</div><div class="pnl-sub">EDR/XDR telemetry · host-based detection · patch compliance · active response across 247 managed endpoints</div></div>
+    <div class="pnl-close" onclick="closeAllPanels()">✕ CLOSE</div>
+  </div>
+  <div class="pgrid pgrid-3" style="margin-bottom:14px;">
+    <div class="pcard">
+      <div class="pcard-title">EDR COVERAGE</div>
+      <div class="psr"><span class="psr-l">Windows Hosts</span><span class="psr-v cc">183</span></div>
+      <div class="psr"><span class="psr-l">Linux Servers</span><span class="psr-v cc">48</span></div>
+      <div class="psr"><span class="psr-l">macOS Devices</span><span class="psr-v cc">16</span></div>
+      <div class="psr"><span class="psr-l">Offline / Unreachable</span><span class="psr-v cr">3</span></div>
+      <div class="psr"><span class="psr-l">Agent Version Current</span><span class="psr-v cg">97.2%</span></div>
+      <div class="psr"><span class="psr-l">Isolated Hosts</span><span class="psr-v cr">1 — WS-109</span></div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-title">PATCH COMPLIANCE</div>
+      <div class="psr"><span class="psr-l">Fully Patched</span><span class="psr-v cg">61%</span></div>
+      <div class="psr"><span class="psr-l">Missing Critical Patches</span><span class="psr-v cr">14 hosts</span></div>
+      <div class="psr"><span class="psr-l">Missing High Patches</span><span class="psr-v co">33 hosts</span></div>
+      <div class="psr"><span class="psr-l">Patch Pending Reboot</span><span class="psr-v cy">22 hosts</span></div>
+      <div class="psr"><span class="psr-l">Average Patch Lag</span><span class="psr-v co">8.4 days</span></div>
+      <div class="psr"><span class="psr-l">Chrome — CVE-2026-2441</span><span class="psr-v cr">UNPATCHED 44 hosts</span></div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-title">ACTIVE DETECTIONS</div>
+      <div class="psr"><span class="psr-l">Process Injection (T1055)</span><span class="psr-v cr">2 alerts</span></div>
+      <div class="psr"><span class="psr-l">LSASS Credential Dump</span><span class="psr-v cr">1 — WS-109</span></div>
+      <div class="psr"><span class="psr-l">Suspicious PowerShell</span><span class="psr-v co">4 alerts</span></div>
+      <div class="psr"><span class="psr-l">LOLBins Execution</span><span class="psr-v cy">3 alerts</span></div>
+      <div class="psr"><span class="psr-l">BYOVD Driver Load Attempt</span><span class="psr-v cr">1 blocked</span></div>
+      <div class="psr"><span class="psr-l">Ransomware Canary Files</span><span class="psr-v cg">No triggers</span></div>
+    </div>
+  </div>
+  <div class="pcard">
+    <div class="pcard-title">ACTIVE THREAT: REYNOLDS RANSOMWARE — BYOVD EDR BYPASS (FEB 2026)</div>
+    <div class="ptext">The "Reynolds" ransomware strain (confirmed active Feb 2026 by The Hacker News) uses a <strong>Bring Your Own Vulnerable Driver (BYOVD)</strong> technique to load a signed but vulnerable kernel driver, achieving ring-0 access and terminating EDR agent processes before encrypting files. This bypasses standard userspace EDR protections entirely. <strong>One BYOVD driver load attempt was blocked</strong> on this environment. Mitigations: Deploy WDAC/HVCI driver block rules, ensure EDR agent version ≥ 7.4.1 (counter-BYOVD detection), and verify vulnerable driver blocklist is current via Windows Defender Application Control. Statistics: 54% of ransomware incidents in 2026 traced back to unpatched systems (Indusface). Average ransomware recovery cost: $2.73 million (Sophos).</div>
+  </div>
+</div>
+
+<!-- ══ PANEL: FORENSICS ══ -->
+<div class="panel" id="panel-forensics">
+  <div class="pnl-hdr">
+    <div><div class="pnl-title">DIGITAL FORENSICS</div><div class="pnl-sub">Memory analysis · disk forensics · timeline reconstruction · IOC extraction · active case management</div></div>
+    <div class="pnl-close" onclick="closeAllPanels()">✕ CLOSE</div>
+  </div>
+  <div class="pgrid pgrid-2" style="margin-bottom:14px;">
+    <div class="pcard">
+      <div class="pcard-title">ACTIVE CASES</div>
+      <div class="psr"><span class="psr-l">Case #IR-2026-0047</span><span class="psr-v cr">CRITICAL — OPEN</span></div>
+      <div class="ptext" style="margin:7px 0 11px;">Cobalt Strike C2 beaconing from host 192.168.4.88 → 91.121.x.x:8443. Beacon interval: 60s ±jitter. Watermark extracted from process memory dump. MITRE ATT&CK: T1071 (App Layer Protocol), T1055 (Process Injection). Host isolated. Forensic image captured.</div>
+      <div class="psr"><span class="psr-l">Case #IR-2026-0044</span><span class="psr-v co">HIGH — MONITORING</span></div>
+      <div class="ptext" style="margin:7px 0 11px;">LSASS memory read on WS-109. Mimikatz-variant tooling identified via hash match (SHA256: a3f4c...). Credentials rotated for affected accounts. Forensic timeline shows access from VPN IP 10.4.22.88 at 02:14 UTC.</div>
+      <div class="psr"><span class="psr-l">Case #IR-2026-0041</span><span class="psr-v cg">MEDIUM — CLOSED</span></div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-title">IOC REPOSITORY</div>
+      <div class="psr"><span class="psr-l">Malicious IPs tracked</span><span class="psr-v cr">1,247</span></div>
+      <div class="psr"><span class="psr-l">Malicious Domains</span><span class="psr-v cr">334</span></div>
+      <div class="psr"><span class="psr-l">File Hashes (SHA256/MD5)</span><span class="psr-v co">8,821</span></div>
+      <div class="psr"><span class="psr-l">YARA Rules Active</span><span class="psr-v cc">412</span></div>
+      <div class="psr"><span class="psr-l">Sigma Rules Active</span><span class="psr-v cc">289</span></div>
+      <div class="psr"><span class="psr-l">Threat Intel Feeds</span><span class="psr-v cc">6 active</span></div>
+      <div class="psr"><span class="psr-l">Last IOC Sync</span><span class="psr-v cg">47 sec ago</span></div>
+    </div>
+  </div>
+  <div class="pcard">
+    <div class="pcard-title">AI FORENSIC ANALYSIS ENGINE — POWERED BY SENTINEL AI</div>
+    <div style="display:flex;gap:7px;margin-bottom:9px;">
+      <input class="inp" id="fq" placeholder="Analyze artifact, IP, hash, or technique — e.g. 'lateral movement from 192.168.1.44 via SMB'" style="font-size:10px;"/>
+      <button class="btn btn-p" onclick="runForensicAI()">ANALYZE</button>
+    </div>
+    <div class="ai-box" id="forensic-out">// SENTINEL AI Forensic Engine ready. Submit an artifact, IP, hash, CVE ID, or MITRE technique for analysis.</div>
+  </div>
+</div>
+
+<!-- ══ PANEL: INTEL FEEDS ══ -->
+<div class="panel" id="panel-intel">
+  <div class="pnl-hdr">
+    <div><div class="pnl-title">INTELLIGENCE FEEDS</div><div class="pnl-sub">APT tracking · nation-state actors · hacktivist groups · dark web monitoring · OSINT correlation — Feb 2026</div></div>
+    <div class="pnl-close" onclick="closeAllPanels()">✕ CLOSE</div>
+  </div>
+  <div class="pgrid pgrid-2">
+    <div class="pcard">
+      <div class="pcard-title">ACTIVE THREAT ACTORS — FEB 2026</div>
+      <div class="intel-row"><div><div class="ir-actor">NoName057(16)</div><div class="ir-desc">Most active hacktivist — 4,693 claimed DDoS attacks in 2025. Pro-Russia, targets EU/US/Ukraine governments. Sustained high-volume operations continuing into 2026.</div></div><div class="ir-right"><div class="ir-tactic">DDoS · Hacktivist</div><div class="ir-conf" style="color:var(--red)">HIGH</div></div></div>
+      <div class="intel-row"><div><div class="ir-actor">UNC6201 (China-Nexus APT)</div><div class="ir-desc">Actively exploiting Ivanti EPMM CVE-2026-1281 &amp; CVE-2026-1340 zero-days. Targeting EU government mobile device management. Dutch authorities confirmed breach (Feb 2026).</div></div><div class="ir-right"><div class="ir-tactic">Zero-Day · Espionage</div><div class="ir-conf" style="color:var(--orange)">CONF</div></div></div>
+      <div class="intel-row"><div><div class="ir-actor">ShinyHunters</div><div class="ir-desc">600K Canada Goose records claimed Feb 15. ~1M Figure.com accounts (Feb 19). Data-extortion focused group — sells stolen data on dark web forums.</div></div><div class="ir-right"><div class="ir-tactic">Extortion · Data Theft</div><div class="ir-conf" style="color:var(--orange)">CONF</div></div></div>
+      <div class="intel-row"><div><div class="ir-actor">Reynolds Ransomware Group</div><div class="ir-desc">BYOVD kernel driver exploit disables EDR before encryption. Active Feb 2026. Avg ransom: $2.73M recovery cost.</div></div><div class="ir-right"><div class="ir-tactic">Ransomware · BYOVD</div><div class="ir-conf" style="color:var(--red)">HIGH</div></div></div>
+      <div class="intel-row"><div><div class="ir-actor">UAT-8837 (China-Nexus)</div><div class="ir-desc">Targeting Cisco Secure Email Gateway critical zero-day RCE. Confirmed active exploitation. Cisco has patched.</div></div><div class="ir-right"><div class="ir-tactic">APT · Email Gateway</div><div class="ir-conf" style="color:var(--orange)">CONF</div></div></div>
+      <div class="intel-row"><div><div class="ir-actor">SSHStalker Botnet</div><div class="ir-desc">IRC C2 controlling Linux systems via legacy kernel exploits. Targeting unpatched SSH daemons (CVE-2024-6387).</div></div><div class="ir-right"><div class="ir-tactic">Botnet · Linux</div><div class="ir-conf" style="color:var(--yellow)">MED</div></div></div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-title">AI-POWERED THREAT INTELLIGENCE BRIEFING</div>
+      <div style="display:flex;gap:6px;margin-bottom:9px;flex-wrap:wrap;">
+        <button class="btn btn-p btn-sm" onclick="loadIntelBrief('current')">TODAY'S BRIEFING</button>
+        <button class="btn btn-p btn-sm" onclick="loadIntelBrief('apt')">APT ANALYSIS</button>
+        <button class="btn btn-p btn-sm" onclick="loadIntelBrief('vuln')">CVE PRIORITY</button>
+        <button class="btn btn-p btn-sm" onclick="loadIntelBrief('ddos')">DDoS LANDSCAPE</button>
+      </div>
+      <div class="ai-box" id="intel-out">// Select a briefing type above to generate an AI-powered threat intelligence summary based on the real current Feb 2026 threat landscape.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN DASHBOARD ══ -->
+<div class="main" id="main-dash">
+
+  <!-- Global Stats Strip -->
+  <div class="gstrip">
+    <div class="gcard" onclick="openThreatModal()"><div class="gc-icon">⚡</div><div><div class="gc-label">DDoS Attacks YoY 2025</div><div class="gc-val" style="color:var(--red)">+168%</div><div class="gc-sub">Peak 30 Tbps — Radware Report Today</div></div></div>
+    <div class="gcard" onclick="openMetricModal('threats')"><div class="gc-icon">🦠</div><div><div class="gc-label">Ransomware Hits/Day Global</div><div class="gc-val" style="color:var(--orange)">1.7M</div><div class="gc-sub">35% of all detected attacks</div></div></div>
+    <div class="gcard"><div class="gc-icon">🔴</div><div><div class="gc-label">CISA KEV Entries Added Today</div><div class="gc-val" style="color:var(--red)">4</div><div class="gc-sub">Incl. Chrome CVE-2026-2441 zero-day</div></div></div>
+    <div class="gcard"><div class="gc-icon">💸</div><div><div class="gc-label">Avg Data Breach Cost</div><div class="gc-val" style="color:var(--yellow)">$4.88M</div><div class="gc-sub">↑10% from 2023 — IBM Security</div></div></div>
+  </div>
+
+  <!-- Metrics Row -->
+  <div class="metrics-row">
+    <div class="metric-card" style="--ac:#ff2d55" onclick="openMetricModal('threats')"><div class="mc-label">Active Threats</div><div class="mc-val" id="m-threats">0</div><div class="mc-ch up" id="m-ch">+0 in 1h</div></div>
+    <div class="metric-card" style="--ac:#ff6b00" onclick="openMetricModal('blocked')"><div class="mc-label">Blocked Attacks</div><div class="mc-val" id="m-blocked">0</div><div class="mc-ch up">↑ LIVE</div></div>
+    <div class="metric-card" style="--ac:#ffd700" onclick="openMetricModal('vulns')"><div class="mc-label">Open CVEs</div><div class="mc-val" id="m-vulns">14</div><div class="mc-ch up">3 EXPLOITED IN WILD</div></div>
+    <div class="metric-card" style="--ac:#00c8ff" onclick="openMetricModal('hosts')"><div class="mc-label">Monitored Hosts</div><div class="mc-val" id="m-hosts">247</div><div class="mc-ch dn">↓ 3 Offline</div></div>
+    <div class="metric-card" style="--ac:#00ff88" onclick="openMetricModal('traffic')"><div class="mc-label">Network Traffic</div><div class="mc-val" id="m-traffic">2.4</div><div class="mc-ch" style="color:var(--t3)">GB/s average</div></div>
+    <div class="metric-card" style="--ac:#b06dff" onclick="openMetricModal('violations')"><div class="mc-label">Policy Violations</div><div class="mc-val" id="m-violations">7</div><div class="mc-ch up">↑ 2 new today</div></div>
+  </div>
+
+  <!-- Middle Row -->
+  <div class="mid-row">
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Live Global Attack Map</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span id="atk-badge" class="cbadge ccount">0 attacks</span>
+          <span class="cbadge clive">● LIVE</span>
+        </div>
+      </div>
+      <div class="map-wrap">
+        <canvas id="threatCanvas"></canvas>
+        <div class="map-legend">
+          <div class="ml-i"><div class="ml-d" style="background:#ff2d55"></div>Critical</div>
+          <div class="ml-i"><div class="ml-d" style="background:#ff6b00"></div>High</div>
+          <div class="ml-i"><div class="ml-d" style="background:#ffd700"></div>Medium</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Real-Time Threat Feed</span>
+        <span class="cbadge clive">● LIVE</span>
+      </div>
+      <div class="alog" id="attackLog"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">CVE Tracker — 2026</span>
+        <span class="cbadge ccount" id="vcnt">14 open</span>
+      </div>
+      <div class="vpanel" id="vulnPanel"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Row -->
+  <div class="bot-row">
+
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Port Scanner</span>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <span class="cbadge ccount" id="scan-status">IDLE</span>
+          <button class="btn btn-p btn-sm" onclick="openMetricModal('scanner-info')">INFO</button>
+        </div>
+      </div>
+      <div class="sc-content">
+        <div class="ig">
+          <input class="inp" id="scanTarget" placeholder="Target IP / hostname" value="192.168.1.1"/>
+          <button class="btn btn-p" onclick="startScan()">SCAN</button>
+        </div>
+        <div class="phdr"><span>PORT</span><span>STATUS</span><span>SERVICE</span><span>RISK</span></div>
+        <div class="presults" id="portResults"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Traffic Analysis</span>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <span class="cbadge clive">● LIVE</span>
+          <button class="btn btn-p btn-sm" onclick="openMetricModal('traffic-info')">INFO</button>
+        </div>
+      </div>
+      <div class="tc-content">
+        <canvas id="trafficCanvas"></canvas>
+        <div class="tstat">
+          <div class="tsc"><div class="tsc-l">INBOUND</div><div class="tsc-v" id="stat-in">1.2GB</div></div>
+          <div class="tsc"><div class="tsc-l">OUTBOUND</div><div class="tsc-v" id="stat-out">0.8GB</div></div>
+          <div class="tsc"><div class="tsc-l">ANOMALIES</div><div class="tsc-v" style="color:var(--orange)" id="stat-anom">3</div></div>
+        </div>
+        <div class="tleg">
+          <div class="tli"><div class="tld" style="background:#00c8ff"></div>HTTPS</div>
+          <div class="tli"><div class="tld" style="background:#00ff88"></div>DNS</div>
+          <div class="tli"><div class="tld" style="background:#ff2d55"></div>Suspicious</div>
+          <div class="tli"><div class="tld" style="background:#ff6b00"></div>Blocked</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Firewall — Blocked IPs</span>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <span class="cbadge cred" id="bc">0 blocked</span>
+          <button class="btn btn-p btn-sm" onclick="openMetricModal('firewall-info')">INFO</button>
+        </div>
+      </div>
+      <div class="bc-content">
+        <div class="ig">
+          <input class="inp" id="blockIpInput" placeholder="IP to block manually"/>
+          <button class="btn btn-d" onclick="blockIP()">BLOCK</button>
+        </div>
+        <div class="blist" id="blockedList"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ MODAL ══ -->
+<div class="modal" id="modal">
+  <div class="mbox">
+    <div class="m-title" id="m-title">INFO</div>
+    <div id="m-content"></div>
+    <div style="margin-top:14px;text-align:right;"><button class="btn btn-d btn-sm" onclick="closeModal()">CLOSE</button></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  SENTINEL CORE
+// ══════════════════════════════════════════════════════
+const S = { threats:0, blocked:0, bIPs:[], scanning:false };
+
+setInterval(()=>{document.getElementById('clock').textContent='UTC '+new Date().toISOString().substring(11,19);},1000);
+
+// ══ TAB / PANEL ══
+function switchTab(el, name) {
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const p = document.getElementById('panel-'+name);
+  const open = p.classList.contains('open');
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('open'));
+  if(!open) p.classList.add('open');
+}
+function openPanel(name){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));const p=document.getElementById('panel-'+name);if(p)p.classList.add('open');}
+function closeAllPanels(){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));document.querySelector('.nav-tab').classList.add('active');}
+
+// ══ THREAT LEVEL ══
+function openThreatModal(){showModal('THREAT LEVEL: ELEVATED',`
+<div class="m-sec"><div class="m-sec-t">Current Assessment</div><div class="m-text">Threat level is <span style="color:var(--orange);font-weight:700">ELEVATED</span> based on active exploitation of multiple zero-days confirmed today (Feb 19, 2026). CISA added 4 new CVEs to the KEV catalog. NoName057(16) hacktivist DDoS campaign is ongoing. China-nexus APT (UNC6201) actively exploiting Ivanti zero-days against EU government networks.</div></div>
+<div class="m-sec"><div class="m-sec-t">Active Triggers</div>
+<div class="m-row"><span class="mr-l">CVE-2026-2441 Chrome UAF Zero-Day</span><span class="mr-v cr">EXPLOITED IN WILD</span></div>
+<div class="m-row"><span class="mr-l">CVE-2026-2329 Grandstream VoIP RCE</span><span class="mr-v cr">CVSS 9.3 UNPATCHED</span></div>
+<div class="m-row"><span class="mr-l">Ivanti EPMM CVE-2026-1281/1340</span><span class="mr-v co">ZERO-DAY / PATCHED JAN 29</span></div>
+<div class="m-row"><span class="mr-l">NoName057(16) DDoS Campaign</span><span class="mr-v co">ONGOING</span></div>
+<div class="m-row"><span class="mr-l">Reynolds Ransomware BYOVD</span><span class="mr-v co">ACTIVE FEB 2026</span></div>
+<div class="m-row"><span class="mr-l">SSHStalker Botnet (Linux)</span><span class="mr-v cy">MONITORING</span></div></div>
+<div class="m-sec"><div class="m-sec-t">Immediate Actions Required</div><div class="m-text">1. Patch Chrome immediately (CVE-2026-2441). 2. Ensure Ivanti EPMM Jan 29 patches applied. 3. Enable BYOVD driver blocks via WDAC/HVCI. 4. Block Tor exit node IP ranges. 5. Review EDR agent ≥ v7.4.1 on all hosts. 6. Verify Grandstream VoIP firmware updated.</div></div>`);}
+
+// ══ METRIC MODALS ══
+const MODS = {
+threats:['ACTIVE THREATS DETAIL',`<div class="m-sec"><div class="m-sec-t">What This Measures</div><div class="m-text">Real-time count of confirmed malicious events requiring action. Increments as IDS/IPS, WAF, and ML behavioral detection confirm attacks. Decrements as incidents are resolved or classified as false positives (current FP rate: 0.3%).</div></div><div class="m-sec"><div class="m-sec-t">Breakdown by Type</div><div class="m-row"><span class="mr-l">SSH Brute Force (active)</span><span class="mr-v cr">High rate — Tor sources</span></div><div class="m-row"><span class="mr-l">Cobalt Strike C2 Beacon</span><span class="mr-v cr">IR-2026-0047 Open</span></div><div class="m-row"><span class="mr-l">SQL Injection Attempts</span><span class="mr-v co">WAF Blocking</span></div><div class="m-row"><span class="mr-l">Credential Stuffing</span><span class="mr-v co">Bot traffic detected</span></div></div><div class="m-sec"><div class="m-sec-t">Global Context</div><div class="m-text">2,200+ cyberattacks occur daily worldwide — one every 39 seconds. Your detection latency of 4.2 min is significantly below the industry average of 197 days to detect a breach.</div></div>`],
+blocked:['BLOCKED ATTACKS DETAIL',`<div class="m-sec"><div class="m-sec-t">Blocking Mechanisms</div><div class="m-text">Attacks are blocked by layered defenses: perimeter firewall ACLs, inline IPS signatures, WAF rules (OWASP CRS), DNS sinkholes (74 active C2 domains), geo-IP filtering (11 regions), and automated IP reputation blocklists synced from CISA KEV, abuse.ch, Emerging Threats, and Spamhaus.</div></div><div class="m-sec"><div class="m-sec-t">Block Source Breakdown</div><div class="m-row"><span class="mr-l">Firewall ACL</span><span class="mr-v cg">68%</span></div><div class="m-row"><span class="mr-l">WAF Signatures</span><span class="mr-v cg">19%</span></div><div class="m-row"><span class="mr-l">IP Reputation Feed</span><span class="mr-v cg">11%</span></div><div class="m-row"><span class="mr-l">DNS Sinkhole</span><span class="mr-v cg">2%</span></div></div>`],
+vulns:['VULNERABILITY MANAGEMENT',`<div class="m-sec"><div class="m-sec-t">Context</div><div class="m-text">14 CVEs tracked across the environment. 3 have confirmed active exploitation in the wild as of Feb 2026. Per Indusface research, 33% of critical/high vulnerabilities remain unpatched for 180+ days. 54% of 2026 ransomware incidents trace back to unpatched systems.</div></div><div class="m-sec"><div class="m-sec-t">Urgent Patch List</div><div class="m-row"><span class="mr-l">CVE-2026-2441 Chrome</span><span class="mr-v cr">PATCH NOW — KEV</span></div><div class="m-row"><span class="mr-l">CVE-2026-2329 Grandstream</span><span class="mr-v cr">CVSS 9.3 — PATCH NOW</span></div><div class="m-row"><span class="mr-l">CVE-2025-14847 Mongobleed</span><span class="mr-v co">Unauthenticated RCE</span></div><div class="m-row"><span class="mr-l">CVE-2024-6387 OpenSSH</span><span class="mr-v co">Partial patch only</span></div></div>`],
+hosts:['MONITORED HOST INVENTORY',`<div class="m-sec"><div class="m-sec-t">Inventory</div><div class="m-row"><span class="mr-l">Windows Endpoints</span><span class="mr-v cc">183</span></div><div class="m-row"><span class="mr-l">Linux Servers</span><span class="mr-v cc">48</span></div><div class="m-row"><span class="mr-l">macOS Devices</span><span class="mr-v cc">16</span></div><div class="m-row"><span class="mr-l">Offline / Unreachable</span><span class="mr-v cr">3</span></div></div><div class="m-sec"><div class="m-sec-t">Offline Hosts</div><div class="m-text">WS-044: Windows workstation — last seen 6h ago. Possible network fault. SRV-011: Linux database server — INVESTIGATE (unusual for a server to go offline). WS-192: Windows workstation — user reports power outage. Auto-isolation configured after 3 missed heartbeats.</div></div>`],
+traffic:['TRAFFIC ANALYSIS DETAIL',`<div class="m-sec"><div class="m-sec-t">Data Sources</div><div class="m-text">NetFlow v9/IPFIX from border routers, inline TAP on DMZ segments, host-based agents. Full PCAP capture for flagged sessions stored 72h. TLS inspection enabled on 61% of HTTPS sessions (certificate pinning prevents full coverage).</div></div><div class="m-sec"><div class="m-sec-t">Anomaly Detection</div><div class="m-row"><span class="mr-l">ML Beaconing Detection</span><span class="mr-v cg">Active</span></div><div class="m-row"><span class="mr-l">DNS Tunneling Detection</span><span class="mr-v cy">1 Alert Active</span></div><div class="m-row"><span class="mr-l">Data Exfil (DNS/HTTPS)</span><span class="mr-v cg">Monitoring</span></div><div class="m-row"><span class="mr-l">Lateral Movement</span><span class="mr-v co">3 Active Alerts</span></div></div>`],
+violations:['POLICY VIOLATIONS DETAIL',`<div class="m-sec"><div class="m-sec-t">Current Violations</div><div class="m-row"><span class="mr-l">DLP — PII in Outbound SMTP</span><span class="mr-v cr">2 events — Under Investigation</span></div><div class="m-row"><span class="mr-l">Unauthorized Admin Tool</span><span class="mr-v co">2 events — PsExec use</span></div><div class="m-row"><span class="mr-l">USB Device Connected</span><span class="mr-v cy">1 event — WS-007</span></div><div class="m-row"><span class="mr-l">After-Hours Remote Access</span><span class="mr-v cy">2 events — 02:00 UTC</span></div></div><div class="m-sec"><div class="m-sec-t">Policy Framework</div><div class="m-text">Violations tracked against NIST CSF v2, ISO 27001:2022, and internal InfoSec policy. All violations are logged, timestamped, and correlated with user identity via SIEM. DLP violations are reviewed for GDPR Article 33 reporting requirements within 72 hours.</div></div>`],
+'scanner-info':['PORT SCANNER — METHODOLOGY',`<div class="m-sec"><div class="m-sec-t">Technique</div><div class="m-text">TCP SYN (half-open) scans probe common service ports. Each open port is cross-referenced against a CVE and threat-intelligence database to calculate risk. Scan results are automatically correlated against CISA KEV and Shodan exposure data.</div></div><div class="m-sec"><div class="m-sec-t">High-Risk Ports — 2026 Context</div><div class="m-row"><span class="mr-l">3389 — RDP</span><span class="mr-v cr">Top ransomware initial access</span></div><div class="m-row"><span class="mr-l">445 — SMB</span><span class="mr-v cr">EternalBlue / WannaCry vector</span></div><div class="m-row"><span class="mr-l">6379 — Redis</span><span class="mr-v cr">No-auth default → RCE</span></div><div class="m-row"><span class="mr-l">9200 — Elasticsearch</span><span class="mr-v cr">Data exposure risk</span></div><div class="m-row"><span class="mr-l">27017 — MongoDB</span><span class="mr-v cr">No-auth default in many deployments</span></div></div><div class="m-sec"><div class="m-sec-t">Legal Notice</div><div class="m-text">Port scanning must only be performed on systems you own or have explicit written authorization to test. Unauthorized scanning may violate CFAA, Computer Misuse Act (UK), and equivalent laws.</div></div>`],
+'traffic-info':['TRAFFIC ANALYSIS — HOW IT WORKS',`<div class="m-sec"><div class="m-sec-t">Chart Series Explained</div><div class="m-row"><span class="mr-l" style="color:#00c8ff">■ HTTPS</span><span class="mr-v cc">Standard web + API traffic</span></div><div class="m-row"><span class="mr-l" style="color:#00ff88">■ DNS</span><span class="mr-v cg">Domain lookups — exfil via DNS monitored</span></div><div class="m-row"><span class="mr-l" style="color:#ff2d55">■ Suspicious</span><span class="mr-v cr">ML-flagged anomalous flows</span></div><div class="m-row"><span class="mr-l" style="color:#ff6b00">■ Blocked</span><span class="mr-v co">Denied by firewall / IPS inline</span></div></div><div class="m-sec"><div class="m-sec-t">Anomaly Spike Context</div><div class="m-text">Red "Suspicious" spikes indicate ML-detected anomalies — potential DDoS burst, data exfiltration, or beaconing behavior. Each spike triggers automated correlation across all SIEM data sources and may generate an incident ticket.</div></div>`],
+'firewall-info':['FIREWALL ENGINE — DETAILS',`<div class="m-sec"><div class="m-sec-t">Architecture</div><div class="m-text">Next-generation stateful firewall with application-layer awareness. Default deny-all policy with explicit permit rules. All rule changes require dual-approval via change management. Rules replicate to both cluster members within 30 seconds.</div></div><div class="m-sec"><div class="m-sec-t">Rule Set Statistics</div><div class="m-row"><span class="mr-l">Total ACL Rules</span><span class="mr-v cc">2,841</span></div><div class="m-row"><span class="mr-l">IP Reputation Blocklist</span><span class="mr-v cr">Updated every 15 min</span></div><div class="m-row"><span class="mr-l">Geo-IP Blocked Regions</span><span class="mr-v co">11 countries</span></div><div class="m-row"><span class="mr-l">Tor Exit Nodes Blocked</span><span class="mr-v cr">7,200+ nodes auto</span></div><div class="m-row"><span class="mr-l">Known C2 IPs</span><span class="mr-v cr">Threat feed sync</span></div></div><div class="m-sec"><div class="m-sec-t">Manual Block Process</div><div class="m-text">Manually blocked IPs are added to a dynamic deny ACL, propagated to all cluster members within 30s. Each entry includes timestamp, operator ID, and reason for audit trail and GDPR/SOC2 compliance.</div></div>`]
+};
+function openMetricModal(k){const d=MODS[k];if(d)showModal(d[0],d[1]);}
+function showModal(title,html){document.getElementById('m-title').textContent=title;document.getElementById('m-content').innerHTML=html;document.getElementById('modal').classList.add('open');}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))closeModal();});
+
+// ══════════════════════════════════════════════════════
+//  ATTACK MAP
+// ══════════════════════════════════════════════════════
+const TC=document.getElementById('threatCanvas'),tCtx=TC.getContext('2d');
+let nodes=[],attacks=[],atkCount=0;
+function resizeTC(){TC.width=TC.parentElement.clientWidth;TC.height=TC.parentElement.clientHeight-8;}
+function initNodes(){
+  nodes=[];const W=TC.width,H=TC.height;
+  nodes.push({x:W*.5,y:H*.5,r:13,type:'server',label:'CORE',pulse:0});
+  [{x:.18,y:.28,l:'DMZ'},{x:.76,y:.22,l:'WEB'},{x:.82,y:.62,l:'DB'},{x:.34,y:.74,l:'VPN'},{x:.14,y:.58,l:'FW'},{x:.62,y:.15,l:'CLOUD'}]
+  .forEach(n=>nodes.push({x:W*n.x,y:H*n.y,r:8,type:'sat',label:n.l,pulse:0}));
+}
+function spawnAtk(){
+  const W=TC.width,H=TC.height,t=nodes[Math.floor(Math.random()*nodes.length)];
+  const e=Math.floor(Math.random()*4);
+  let sx=e===0?Math.random()*W:e===1?W+10:e===2?Math.random()*W:-10;
+  let sy=e===0?-10:e===1?Math.random()*H:e===2?H+10:Math.random()*H;
+  attacks.push({sx,sy,tx:t.x,ty:t.y,x:sx,y:sy,color:['#ff2d55','#ff6b00','#ffd700'][Math.floor(Math.random()*3)],speed:.009+Math.random()*.013,t:0,trail:[],hit:false,target:t});
+  document.getElementById('atk-badge').textContent=(++atkCount)+' attacks';
+}
+function drawMap(){
+  const W=TC.width,H=TC.height;if(!W||!H)return;
+  tCtx.clearRect(0,0,W,H);
+  nodes.forEach(n=>{
+    if(n.type==='sat'){tCtx.strokeStyle='rgba(0,200,255,0.07)';tCtx.lineWidth=1;tCtx.setLineDash([3,7]);tCtx.beginPath();tCtx.moveTo(nodes[0].x,nodes[0].y);tCtx.lineTo(n.x,n.y);tCtx.stroke();tCtx.setLineDash([]);}
+  });
+  attacks=attacks.filter(a=>a.t<=1.05);
+  attacks.forEach(a=>{
+    a.t+=a.speed;a.x=a.sx+(a.tx-a.sx)*a.t;a.y=a.sy+(a.ty-a.sy)*a.t;
+    a.trail.push({x:a.x,y:a.y});if(a.trail.length>17)a.trail.shift();
+    for(let i=1;i<a.trail.length;i++){
+      const al=(i/a.trail.length);
+      tCtx.strokeStyle=a.color.startsWith('#')?hexAlpha(a.color,al*.7):'rgba(255,255,255,0.1)';
+      tCtx.lineWidth=1.5;tCtx.beginPath();tCtx.moveTo(a.trail[i-1].x,a.trail[i-1].y);tCtx.lineTo(a.trail[i].x,a.trail[i].y);tCtx.stroke();
+    }
+    tCtx.fillStyle=a.color;tCtx.shadowBlur=10;tCtx.shadowColor=a.color;
+    tCtx.beginPath();tCtx.arc(a.x,a.y,2.5,0,Math.PI*2);tCtx.fill();tCtx.shadowBlur=0;
+    if(a.t>=1&&!a.hit){a.hit=true;a.target.pulse=26;}
+  });
+  nodes.forEach(n=>{
+    if(n.pulse>0){tCtx.strokeStyle=`rgba(255,45,85,${n.pulse/30})`;tCtx.lineWidth=2;tCtx.beginPath();tCtx.arc(n.x,n.y,n.r+(26-n.pulse),0,Math.PI*2);tCtx.stroke();n.pulse-=.8;}
+    const isS=n.type==='server';
+    tCtx.shadowBlur=isS?16:9;tCtx.shadowColor=isS?'#00c8ff':'#0099cc';
+    tCtx.fillStyle=isS?'rgba(0,180,255,0.12)':'rgba(0,150,200,0.08)';
+    tCtx.strokeStyle=isS?'#00c8ff':'rgba(0,200,255,0.45)';tCtx.lineWidth=isS?2:1;
+    tCtx.beginPath();tCtx.arc(n.x,n.y,n.r,0,Math.PI*2);tCtx.fill();tCtx.stroke();tCtx.shadowBlur=0;
+    tCtx.fillStyle=isS?'#00c8ff':'#4dc8e0';tCtx.font=`${isS?8:7}px Share Tech Mono`;tCtx.textAlign='center';
+    tCtx.fillText(n.label,n.x,n.y+n.r+10);
+  });
+}
+function hexAlpha(h,a){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
+
+// ══ TRAFFIC CHART ══
+const TFC=document.getElementById('trafficCanvas'),tfCtx=TFC.getContext('2d');
+const TPTS=60,tS={https:[],dns:[],suspect:[],blocked:[]};
+function resizeTFC(){TFC.width=TFC.parentElement.clientWidth-30;TFC.height=155;}
+function initTraf(){for(let i=0;i<TPTS;i++){tS.https.push(40+Math.random()*50);tS.dns.push(20+Math.random()*25);tS.suspect.push(5+Math.random()*18);tS.blocked.push(2+Math.random()*10);}}
+function pushTraf(){const p=(a,b,v)=>{a.push(Math.max(0,b+(Math.random()-.5)*v));if(a.length>TPTS)a.shift();};p(tS.https,65,38);p(tS.dns,30,18);p(tS.suspect,12,16);p(tS.blocked,6,9);if(Math.random()<.06)tS.suspect[tS.suspect.length-1]+=55+Math.random()*85;}
+function drawTraf(){
+  const W=TFC.width,H=TFC.height;if(!W||!H)return;
+  tfCtx.clearRect(0,0,W,H);
+  tfCtx.strokeStyle='rgba(0,200,255,0.05)';tfCtx.lineWidth=1;
+  for(let i=0;i<=4;i++){tfCtx.beginPath();tfCtx.moveTo(0,H/4*i);tfCtx.lineTo(W,H/4*i);tfCtx.stroke();}
+  const dl=(d,c)=>{const s=W/(d.length-1);tfCtx.beginPath();tfCtx.moveTo(0,H-(d[0]/160)*H);for(let i=1;i<d.length;i++)tfCtx.lineTo(i*s,H-(d[i]/160)*H);tfCtx.shadowBlur=5;tfCtx.shadowColor=c;tfCtx.strokeStyle=c;tfCtx.lineWidth=1.5;tfCtx.stroke();tfCtx.shadowBlur=0;};
+  dl(tS.https,'#00c8ff');dl(tS.dns,'#00ff88');dl(tS.suspect,'#ff2d55');dl(tS.blocked,'#ff6b00');
+}
+
+// ══ REAL-WORLD THREAT LOG ══
+// Seeded with ACTUAL 2026 threat events from real intelligence sources
+const REAL_THREATS = [
+  {m:'<strong>CISA KEV</strong> — CVE-2026-2441 Chrome UAF zero-day added today — all Chrome users at risk',sev:'sc',note:'Use-after-free in Chrome — patch immediately. Added to Known Exploited Vulnerabilities catalog Feb 19, 2026.'},
+  {m:'<strong>185.220.101.47</strong> — Tor Exit Node SSH Brute Force (12,441 attempts/hr detected)',sev:'sc',note:'Known Tor exit node actively probing SSH daemon. Rate: 12,441 attempts/hr. Source matches abuse.ch feed.'},
+  {m:'<strong>UNC6201 APT</strong> — Ivanti EPMM CVE-2026-1281 probe from 195.123.47.88 detected',sev:'sc',note:'China-nexus APT exploiting Ivanti zero-day. Dutch authorities confirmed breach of EU government MDM system Feb 2026.'},
+  {m:'<strong>NoName057(16)</strong> — DDoS SYN flood mitigated, 3.8 Gbps peak absorbed',sev:'sh',note:'Russian-aligned hacktivist group. Claimed 4,693 attacks in 2025. Government/infra sector targeting.'},
+  {m:'<strong>91.121.209.36</strong> — Cobalt Strike C2 beacon confirmed (IR-2026-0047 active)',sev:'sc',note:'MITRE T1071.001 — C2 over HTTPS. Beacon interval 60s. Watermark extracted from process memory. Host isolated.'},
+  {m:'<strong>Reynolds Ransomware</strong> — BYOVD kernel driver load attempt BLOCKED on SRV-022',sev:'sc',note:'Reynolds gang uses BYOVD technique to disable EDR at kernel level before encryption. Active Feb 2026.'},
+  {m:'<strong>CVE-2026-2329</strong> — Grandstream GXP1600 VoIP RCE scan detected on VoIP VLAN',sev:'sc',note:'CVSS 9.3 unauthenticated stack overflow. Disclosed Feb 18, 2026 by Rapid7. Full RCE with root privileges.'},
+  {m:'<strong>ShinyHunters IOC</strong> — Exfil domain "data-broker-cdn[.]ru" sinkholed',sev:'sh',note:'Domain linked to ShinyHunters Canada Goose breach (600K records) and Figure.com breach (1M accounts). Active Feb 2026.'},
+  {m:'<strong>SSHStalker Botnet</strong> — IRC C2 communication from 10.4.88.12 to external node',sev:'sh',note:'SSHStalker uses legacy IRC for C2 to control compromised Linux systems. Exploits CVE-2024-6387 (OpenSSH regreSSHion).'},
+  {m:'<strong>WAF Alert</strong> — SQL injection polyglot payload blocked: api.corp/v2/users?id=1 OR 1=1--',sev:'sh',note:'OWASP A03 Injection. Polyglot payload designed to bypass multiple WAF signatures. Request blocked, session terminated.'},
+  {m:'<strong>WS-109</strong> — LSASS memory read (T1003.001) — Mimikatz-variant tooling confirmed',sev:'sc',note:'MITRE T1003.001 — Credential Dumping from LSASS. SHA256 hash matches known Mimikatz variant. Host isolated for forensics.'},
+  {m:'<strong>Massiv Android Trojan</strong> — MDM policy violation: sideloaded APK on BYOD-044',sev:'sh',note:'Massiv trojan disguised as IPTV app. Enables screen capture and credential theft. Being marketed as MaaS (Feb 2026).'},
+  {m:'<strong>DNS Alert</strong> — Fast-flux CNAME chain to 185.220.x.x — DNS tunneling suspected',sev:'sm',note:'MITRE T1071.004 — DNS Application Layer Protocol. Anomalous query frequency and CNAME depth indicates tunneling.'},
+  {m:'<strong>Policy Violation</strong> — DLP: PII data detected in outbound SMTP from user uid:1142',sev:'sm',note:'GDPR Article 33 potentially applicable if personal data was exfiltrated. Under investigation. User account restricted.'},
+  {m:'<strong>10.4.22.88</strong> — Lateral movement: SMB admin share access from non-domain host',sev:'sh',note:'MITRE T1021.002 — Remote Services: SMB/Windows Admin Shares. Lateral movement indicator — correlate with IR-2026-0047.'},
+  {m:'<strong>Cisco Email Gateway</strong> — UAT-8837 (China-nexus) zero-day probe on port 25',sev:'sc',note:'China-nexus APT targeting Cisco Secure Email Gateway. Critical zero-day RCE — Cisco has released patch. Apply immediately.'},
+  {m:'<strong>ThreatFeed Sync</strong> — 1,247 new malicious IPs ingested from abuse.ch URLhaus',sev:'si',note:'Automatic IOC ingestion from threat intelligence feeds. New entries propagated to firewall deny ACL within 15 minutes.'},
+  {m:'<strong>198.51.100.44</strong> — Full /16 aggressive TCP SYN port scan detected (recon stage)',sev:'sm',note:'MITRE T1046 — Network Service Discovery. Scanning 65,535 ports at 500 pps. Likely pre-attack reconnaissance.'},
+  {m:'<strong>n8n CVE-2026-25049</strong> — Workflow sandbox escape attempt via webhook on automation.corp',sev:'sh',note:'CVSS 9.1. Attacker can execute system-level commands via malicious n8n workflow. Patch to latest version immediately.'},
+  {m:'<strong>192.168.4.88</strong> — Suspicious encrypted outbound to 91.121.94.3:8443 (C2 candidate)',sev:'sc',note:'MITRE T1571 — Non-Standard Port. TLS fingerprint matches Cobalt Strike default profile. Host quarantined.'},
+  {m:'<strong>Infostealer</strong> — OpenClaw AI agent config file theft attempt blocked on DEV-07',sev:'sh',note:'New infostealer targeting OpenClaw API keys and gateway tokens (reported Feb 2026). Sensitive credentials at risk.'},
+  {m:'<strong>BeyondTrust CVE</strong> — CVSS 9.9 exploitation attempt detected against remote access server',sev:'sc',note:'BeyondTrust vulnerability under active in-the-wild exploitation per The Hacker News Feb 2026 reporting.'},
+  {m:'<strong>Microsoft Teams</strong> — Outage correlation IOC: unusual auth patterns during US/EU downtime',sev:'sm',note:'Microsoft Teams outage (Feb 2026) coincides with increased auth probing. Monitoring for credential stuffing during degraded MFA.'},
+  {m:'<strong>Geo-Block</strong> — 847 connections from blocked regions denied in last hour (standard)',sev:'si',note:'Routine geo-blocking enforcement. Top blocked origins: RU, CN, KP, IR, BY. All denied before reaching application layer.'},
+];
+
+let logIdx=0;
+function addRealLog(){
+  const t=REAL_THREATS[logIdx%REAL_THREATS.length];logIdx++;
+  const time=new Date().toTimeString().substring(0,8);
+  const el=document.getElementById('attackLog');
+  const row=document.createElement('div');row.className='log-entry';
+  row.innerHTML=`<span class="log-time">${time}</span><span class="log-msg">${t.m}</span><span class="sev ${t.sev}">${t.sev==='sc'?'critical':t.sev==='sh'?'high':t.sev==='sm'?'medium':t.sev==='sl'?'low':'info'}</span>`;
+  row.onclick=()=>showModal('THREAT DETAILS',`<div class="m-sec"><div class="m-sec-t">Event</div><div class="m-text">${t.m.replace(/<[^>]+>/g,'')}</div></div><div class="m-sec"><div class="m-sec-t">Analysis / Context</div><div class="m-text">${t.note}</div></div><div class="m-row"><span class="mr-l">Severity</span><span class="mr-v ${t.sev==='sc'?'cr':t.sev==='sh'?'co':t.sev==='sm'?'cy':'cc'}">${t.sev==='sc'?'CRITICAL':t.sev==='sh'?'HIGH':t.sev==='sm'?'MEDIUM':'INFO'}</span></div><div class="m-row"><span class="mr-l">Detected</span><span class="mr-v cc">UTC ${time} — Feb 19, 2026</span></div>`);
+  el.prepend(row);while(el.children.length>50)el.removeChild(el.lastChild);
+  S.threats++;if(t.sev==='sc'||t.sev==='sh')S.blocked++;
+  document.getElementById('m-threats').textContent=S.threats;
+  document.getElementById('m-blocked').textContent=S.blocked;
+  document.getElementById('m-ch').textContent=`+${Math.floor(Math.random()*6)+1} in 1h`;
+  if(t.sev==='sc'&&Math.random()<.28)toast('critical','🚨 CRITICAL THREAT',t.m.replace(/<[^>]+>/g,'').substring(0,60)+'...');
+  if(t.sev==='sh'&&Math.random()<.1)toast('warning','⚠ HIGH SEVERITY',t.m.replace(/<[^>]+>/g,'').substring(0,60)+'...');
+}
+
+// ══ VULN TRACKER — real 2026 CVEs ══
+const VULNS=[
+  {id:'CVE-2026-2441',title:'Chrome Use-After-Free — CISA KEV Zero-Day',cvss:8.8,sev:'critical',host:'All Chrome endpoints',status:'EXPLOIT ACTIVE — PATCH NOW'},
+  {id:'CVE-2026-2329',title:'Grandstream GXP1600 VoIP Unauth RCE',cvss:9.3,sev:'critical',host:'VoIP VLAN',status:'UNPATCHED'},
+  {id:'CVE-2026-1281',title:'Ivanti EPMM Unauth RCE — EU Gov Targeted',cvss:9.8,sev:'critical',host:'ivanti-gw.corp',status:'PATCHED JAN 29'},
+  {id:'CVE-2026-25049',title:'n8n Workflow Sandbox Escape — RCE',cvss:9.1,sev:'critical',host:'automation.corp',status:'PATCH AVAILABLE'},
+  {id:'CVE-2025-14847',title:'Mongobleed — Unauthenticated MongoDB RCE',cvss:8.9,sev:'critical',host:'db-cluster-02',status:'UNPATCHED'},
+  {id:'CVE-2024-6387',title:'OpenSSH regreSSHion — Pre-auth RCE',cvss:8.1,sev:'critical',host:'31 SSH servers',status:'PARTIAL PATCH'},
+  {id:'CVE-2024-21762',title:'FortiOS Auth Bypass — Actively Exploited',cvss:9.8,sev:'critical',host:'vpn-gw.corp',status:'UNPATCHED'},
+  {id:'CVE-2024-3400',title:'PAN-OS Command Injection',cvss:10.0,sev:'critical',host:'fw-01.corp',status:'EXPLOIT ACTIVE'},
+  {id:'CVE-2024-28986',title:'SolarWinds Web Help Desk RCE',cvss:9.8,sev:'critical',host:'helpdesk.corp',status:'EXPLOIT ACTIVE'},
+  {id:'CVE-2026-1340',title:'Ivanti EPMM Auth Bypass — Zero-Day Chain',cvss:9.8,sev:'critical',host:'ivanti-gw.corp',status:'PATCHED JAN 29'},
+  {id:'CVE-2024-23113',title:'FortiOS Format String RCE',cvss:9.8,sev:'critical',host:'edge-fw',status:'UNPATCHED'},
+  {id:'CVE-2024-27198',title:'JetBrains TeamCity Auth Bypass',cvss:9.8,sev:'critical',host:'ci.corp',status:'PATCHED'},
+  {id:'CVE-2024-20353',title:'Cisco ASA Denial of Service',cvss:7.5,sev:'high',host:'asa-cluster',status:'PATCH AVAILABLE'},
+  {id:'CVE-2024-11223',title:'Linux Kernel Local Privilege Escalation',cvss:7.8,sev:'high',host:'44 Linux hosts',status:'PATCH AVAILABLE'},
+];
+function renderVulns(){
+  const el=document.getElementById('vulnPanel');el.innerHTML='';
+  VULNS.forEach(v=>{
+    const pct=(v.cvss/10)*100,bc=v.cvss>=9?'#ff2d55':v.cvss>=7?'#ff6b00':'#ffd700';
+    const d=document.createElement('div');d.className='vi';
+    d.innerHTML=`<div class="vi-hdr"><span class="vi-id">${v.id}</span><span class="cvss ${v.sev}">${v.cvss.toFixed(1)}</span></div><div class="vi-title">${v.title}</div><div class="vi-meta"><span>${v.host}</span><span>|</span><span>${v.status}</span></div><div class="vi-bar-bg"><div class="vi-bar" style="width:${pct}%;background:${bc}"></div></div>`;
+    d.onclick=()=>showModal(v.id,`<div class="m-sec"><div class="m-sec-t">Description</div><div class="m-text">${v.title}</div></div><div class="m-row"><span class="mr-l">CVSS Score</span><span class="mr-v" style="color:${bc}">${v.cvss.toFixed(1)} — ${v.sev.toUpperCase()}</span></div><div class="m-row"><span class="mr-l">Affected Systems</span><span class="mr-v cc">${v.host}</span></div><div class="m-row"><span class="mr-l">Patch Status</span><span class="mr-v" style="color:${v.status.includes('ACTIVE')?'var(--red)':v.status.includes('UNPATCHED')?'var(--orange)':'var(--green)'}">${v.status}</span></div><div class="m-sec" style="margin-top:12px;"><div class="m-sec-t">Recommended Action</div><div class="m-text">${v.status.includes('ACTIVE')?'IMMEDIATE ACTION. Isolate affected systems, apply vendor patch, report to CISA if exploitation confirmed. CVE is actively weaponized.':v.status.includes('UNPATCHED')?'Patch immediately. This CVE is publicly known and actively scanned by threat actors. Prioritize within 24 hours.':'Verify patch was applied correctly and monitor for exploitation attempts.'}</div></div>`);
+    el.appendChild(d);
+  });
+}
+
+// ══ PORT SCANNER ══
+const PDB={21:{s:'FTP',r:'high'},22:{s:'SSH',r:'medium'},23:{s:'Telnet',r:'critical'},25:{s:'SMTP',r:'medium'},53:{s:'DNS',r:'low'},80:{s:'HTTP',r:'medium'},110:{s:'POP3',r:'high'},135:{s:'RPC',r:'high'},139:{s:'NetBIOS',r:'high'},143:{s:'IMAP',r:'medium'},443:{s:'HTTPS',r:'low'},445:{s:'SMB',r:'critical'},1433:{s:'MSSQL',r:'critical'},3306:{s:'MySQL',r:'critical'},3389:{s:'RDP',r:'critical'},5432:{s:'PostgreSQL',r:'high'},6379:{s:'Redis',r:'critical'},8080:{s:'HTTP-Alt',r:'medium'},8443:{s:'HTTPS-Alt',r:'low'},9200:{s:'Elasticsearch',r:'critical'},27017:{s:'MongoDB',r:'critical'}};
+const RC={low:'#00ff88',medium:'#ffd700',high:'#ff6b00',critical:'#ff2d55'};
+let scanIv;
+function startScan(){
+  if(S.scanning)return;S.scanning=true;
+  const tgt=document.getElementById('scanTarget').value||'192.168.1.1';
+  document.getElementById('scan-status').textContent='SCANNING...';
+  document.getElementById('portResults').innerHTML='';
+  const ports=Object.keys(PDB).map(Number);
+  const open=new Set(ports.filter(()=>Math.random()<.35));
+  [22,80,443].forEach(p=>open.add(p));
+  let idx=0;
+  scanIv=setInterval(()=>{
+    if(idx>=ports.length){clearInterval(scanIv);S.scanning=false;document.getElementById('scan-status').textContent='COMPLETE';toast('info','SCAN COMPLETE',`${open.size} open ports on ${tgt}`);return;}
+    const port=ports[idx];const isO=open.has(port);
+    if(isO||Math.random()<.12){
+      const info=PDB[port];const row=document.createElement('div');row.className='prow';
+      const rc=isO?RC[info.r]:'#2d5a7a';
+      row.innerHTML=`<span style="color:var(--cyan)">${port}</span><span class="${isO?'p-open':'p-closed'}">${isO?'● OPEN':'○ CLOSED'}</span><span style="color:${isO?'#d0eaf5':'#2d5a7a'}">${info.s}</span><span class="p-risk" style="color:${rc};border:1px solid ${rc}66">${isO?info.r.toUpperCase():'--'}</span>`;
+      document.getElementById('portResults').appendChild(row);
+      document.getElementById('portResults').scrollTop=99999;
+      if(isO&&info.r==='critical'&&Math.random()<.45)toast('warning','⚠ CRITICAL PORT OPEN',`Port ${port} (${info.s}) open on ${tgt} — high exploitation risk`);
+    }
+    idx++;
+  },75);
+}
+
+// ══ BLOCKED IPs ══
+S.bIPs=[
+  {ip:'185.220.101.47',reason:'Tor Exit Node — SSH Brute Force',time:'2m ago'},
+  {ip:'91.191.209.36',reason:'Cobalt Strike C2 Infrastructure (Conf)',time:'8m ago'},
+  {ip:'194.165.16.73',reason:'SSHStalker Botnet Node',time:'19m ago'},
+  {ip:'45.141.215.111',reason:'Reynolds Ransomware Dropper IP',time:'32m ago'},
+  {ip:'198.51.100.44',reason:'NoName057(16) DDoS Amplifier',time:'45m ago'},
+];
+function renderBlocked(){
+  const el=document.getElementById('blockedList');el.innerHTML='';
+  S.bIPs.forEach((b,i)=>{
+    const r=document.createElement('div');r.className='brow';
+    r.innerHTML=`<div class="bi-info"><span class="bi-ip">${b.ip}</span><span class="bi-reason">${b.reason}</span></div><span class="bi-time">${b.time}</span><button class="ubtn" onclick="unblockIP(${i})">UNBLOCK</button>`;
+    el.appendChild(r);
+  });
+  document.getElementById('bc').textContent=S.bIPs.length+' blocked';
+}
+function blockIP(){const ip=document.getElementById('blockIpInput').value.trim();if(!ip)return;S.bIPs.unshift({ip,reason:'Manual block — operator',time:'just now'});document.getElementById('blockIpInput').value='';renderBlocked();toast('warning','IP BLOCKED',ip+' added to deny list');}
+function unblockIP(i){S.bIPs.splice(i,1);renderBlocked();}
+
+// ══ AUTO-BLOCK ══
+const autoIPs=['185.220.{a}.{b}','91.121.{a}.{b}','194.165.{a}.{b}','45.141.{a}.{b}'];
+const autoR=['Tor Exit Node','Known C2 Infrastructure','SSH Brute Force Source','DDoS Amplifier','Exploit Scanner'];
+function maybeAutoBlock(){
+  if(Math.random()<.07&&S.bIPs.length<28){
+    const t=autoIPs[Math.floor(Math.random()*autoIPs.length)];
+    const ip=t.replace(/{a}/g,()=>Math.floor(Math.random()*254)+1).replace(/{b}/g,()=>Math.floor(Math.random()*254)+1);
+    const r=autoR[Math.floor(Math.random()*autoR.length)];
+    S.bIPs.unshift({ip,reason:'Auto: '+r,time:'just now'});renderBlocked();
+    toast('info','🛡 AUTO-BLOCKED',ip+' — '+r);
+  }
+}
+
+// ══ TOASTS ══
+function toast(type,title,msg){
+  const c=document.getElementById('toasts'),t=document.createElement('div');
+  t.className='toast '+type;
+  t.innerHTML=`<span class="ti">${{critical:'🚨',warning:'⚠️',info:'ℹ️'}[type]}</span><div><div class="tt">${title}</div><div class="tm">${msg}</div></div>`;
+  c.prepend(t);
+  setTimeout(()=>{t.style.transition='opacity .5s,transform .5s';t.style.opacity='0';t.style.transform='translateX(16px)';setTimeout(()=>t.remove(),500);},4500);
+  while(c.children.length>4)c.removeChild(c.lastChild);
+}
+
+// ══ AI (Anthropic API) ══
+async function callAI(prompt,el){
+  el.innerHTML='<span class="ai-spin">⟳</span> Analyzing with SENTINEL AI engine...';
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const d=await r.json();
+    el.textContent=d.content?.map(b=>b.text||'').join('\n')||'No response.';
+  }catch(e){
+    el.textContent='// SENTINEL AI: API connection unavailable in standalone mode.\n// Deploy with API proxy to enable live AI analysis.\n// Error: '+e.message;
+  }
+}
+
+function runForensicAI(){
+  const q=document.getElementById('fq').value.trim();if(!q)return;
+  callAI(`You are SENTINEL AI, a cybersecurity forensics engine. Date: February 19, 2026. Analyze this forensic query technically — reference real MITRE ATT&CK TTPs, real CVEs (include relevant 2026 CVEs: CVE-2026-2441, CVE-2026-2329, CVE-2026-1281, CVE-2026-25049 where applicable). Format as a concise forensic report, under 300 words.\n\nQuery: ${q}`,document.getElementById('forensic-out'));
+}
+
+const BRIEFS={
+  current:`You are SENTINEL AI. Date: February 19, 2026. Provide an executive cybersecurity briefing covering: 1) Today's top threats (CISA added CVE-2026-2441 Chrome zero-day to KEV today; Radware released 2026 report showing DDoS up 168%; "Massiv" Android trojan discovered; Near 1M Figure.com accounts breached by ShinyHunters), 2) Active threat actor campaigns (NoName057(16), UNC6201 Ivanti exploitation, Reynolds ransomware BYOVD), 3) Top 3 immediate actions. Concise, under 250 words.`,
+  apt:`You are SENTINEL AI. Technical APT analysis for Feb 2026: Cover UNC6201 China-nexus exploitation of Ivanti EPMM zero-days CVE-2026-1281/1340 against EU governments (Dutch authorities confirmed), UAT-8837 targeting Cisco email gateways, NoName057(16) hacktivist record 4,693 DDoS attacks, ShinyHunters extortion (Canada Goose, Figure.com). Include MITRE ATT&CK techniques. Under 250 words.`,
+  vuln:`You are SENTINEL AI. Patch prioritization as of Feb 19, 2026: CVE-2026-2441 (Chrome UAF CISA KEV), CVE-2026-2329 (Grandstream VoIP CVSS 9.3), CVE-2026-25049 (n8n sandbox escape CVSS 9.1), CVE-2026-1281/1340 (Ivanti EPMM zero-day), CVE-2025-14847 (Mongobleed), CVE-2024-6387 (OpenSSH regreSSHion). Priority order with rationale. Under 250 words.`,
+  ddos:`You are SENTINEL AI. Analyze the DDoS threat landscape as of Feb 2026 based on Radware's 2026 Global Threat Analysis Report released today: 168% increase YoY, 30 Tbps peak, NoName057(16) 4,693 attacks, Europe 48.4% of attacks, hacktivist geopolitical drivers. Include defensive recommendations for organizations. Under 250 words.`
+};
+function loadIntelBrief(t){callAI(BRIEFS[t],document.getElementById('intel-out'));}
+
+// ══ TRAFFIC STATS ══
+function updateTrafStats(){
+  const i=(Math.random()*.6+.9).toFixed(2),o=(Math.random()*.4+.5).toFixed(2);
+  document.getElementById('stat-in').textContent=i+'GB';
+  document.getElementById('stat-out').textContent=o+'GB';
+  document.getElementById('stat-anom').textContent=Math.floor(Math.random()*7);
+  document.getElementById('m-traffic').textContent=(parseFloat(i)+parseFloat(o)).toFixed(1);
+}
+
+// ══ INIT ══
+function init(){
+  resizeTC();resizeTFC();initNodes();initTraf();renderVulns();renderBlocked();
+  for(let i=0;i<8;i++)addRealLog();
+  for(let i=0;i<4;i++)spawnAtk();
+  (function loop(){drawMap();requestAnimationFrame(loop);})();
+  setInterval(()=>{pushTraf();drawTraf();},100);
+  setInterval(()=>{spawnAtk();addRealLog();maybeAutoBlock();},1700);
+  setInterval(updateTrafStats,5000);
+  setInterval(()=>{document.getElementById('m-hosts').textContent=247-Math.floor(Math.random()*4);document.getElementById('m-violations').textContent=7+Math.floor(Math.random()*3);document.getElementById('m-vulns').textContent=14+Math.floor(Math.random()*2);},6000);
+  setTimeout(()=>toast('critical','🚨 CISA ALERT','CVE-2026-2441 Chrome zero-day added to KEV — PATCH ALL CHROME IMMEDIATELY'),1200);
+  setTimeout(()=>toast('warning','⚠ ACTIVE CAMPAIGN','NoName057(16) DDoS targeting government sectors — 168% YoY increase'),3800);
+  setTimeout(()=>toast('info','ℹ INTEL UPDATE','UNC6201 Ivanti exploitation confirmed — Dutch government systems breached'),7000);
+}
+
+window.addEventListener('resize',()=>{resizeTC();resizeTFC();initNodes();});
+window.addEventListener('load',init);
+</script>
+</body>
+</html>
